@@ -1,30 +1,6 @@
-use crate::types::TetrominoType::I;
-use crate::types::TetrominoType::J;
-use crate::types::TetrominoType::L;
-use crate::types::TetrominoType::O;
-use crate::types::TetrominoType::S;
-use crate::types::TetrominoType::T;
-use crate::types::TetrominoType::Z;
-
+use crate::tetromino::TetrominoType::{I, J, L, O, S, T, Z};
+use crate::util::{Block, Point2D};
 use ggez::graphics::Color;
-
-#[derive(Copy, Clone, Debug)]
-pub struct Point2D<T> {
-    x: T,
-    y: T,
-}
-
-impl<T> Point2D<T> {
-    pub fn new(x: T, y: T) -> Point2D<T> {
-        Point2D { x: x, y: y }
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct Block {
-    position: Point2D<i32>,
-    color: Color,
-}
 
 #[derive(Copy, Clone, Debug)]
 pub enum TetrominoType {
@@ -64,11 +40,8 @@ impl Tetromino {
     }
 
     pub fn rotate(&mut self) {
-        self.blocks.iter_mut().for_each(|p| {
-            p.position.x =
-                (p.position.x as f32 * 90f32.cos() - p.position.y as f32 * 90f32.sin()) as i32;
-            p.position.y =
-                (p.position.y as f32 * 90f32.cos() + p.position.x as f32 * 90f32.sin()) as i32;
+        self.blocks.iter_mut().for_each(|p: &mut Block| {
+            p.rotate(90.0f32);
         });
     }
 

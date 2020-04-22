@@ -1,4 +1,3 @@
-use ggez::conf::{FullscreenType, WindowMode};
 use ggez::event::{self, EventHandler};
 use ggez::graphics;
 use ggez::graphics::*;

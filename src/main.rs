@@ -4,8 +4,10 @@ use ggez::event::{self, EventHandler};
 use ggez::graphics;
 use ggez::{Context, ContextBuilder, GameResult};
 
+mod grid;
 mod tetris;
-mod types;
+mod tetromino;
+mod util;
 
 use crate::tetris::Tetris;
 
