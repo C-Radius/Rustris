@@ -1,24 +1,21 @@
 use ggez::conf::FullscreenType;
 use ggez::conf::WindowMode;
-use ggez::event::{self, EventHandler};
-use ggez::graphics;
-use ggez::{Context, ContextBuilder, GameResult};
+use ggez::event;
+use ggez::ContextBuilder;
 
-mod grid;
 mod tetris;
-mod tetromino;
-mod util;
+mod types;
 
 use crate::tetris::Tetris;
 
 fn main() {
     let (mut ctx, mut event_loop) = ContextBuilder::new("Tetris", "Chris Kritsotalakis")
         .window_mode(WindowMode {
-            width: 1920.0f32,
-            height: 1080.0f32,
+            width: 800.0f32,
+            height: 600.0f32,
             maximized: true,
-            fullscreen_type: FullscreenType::True,
-            borderless: true,
+            fullscreen_type: FullscreenType::Windowed,
+            borderless: false,
             min_width: 0.0,
             max_width: 0.0,
             min_height: 0.0,
@@ -29,6 +26,7 @@ fn main() {
         .unwrap();
 
     let mut tetris = Tetris::new(&mut ctx);
+
     match event::run(&mut ctx, &mut event_loop, &mut tetris) {
         Ok(_) => println!("Exited cleanly."),
         Err(e) => println!("Error occured: {}", e),
