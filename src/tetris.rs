@@ -103,6 +103,7 @@ impl EventHandler for Tetris {
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
         if !self.game_running {
             if input::keyboard::pressed_keys(ctx).len() > 0 {
+                self.grid.reset();
                 self.game_running = true;
                 self.generate_tetromino();
             }

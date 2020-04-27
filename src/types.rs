@@ -46,6 +46,7 @@ impl Block {
 
     pub fn rotate(&mut self, deg: f32) -> &Block {
         self.position = Rotation2::new(deg.to_radians()) * self.position;
+        self.coords_rounded();
         self
     }
 
@@ -217,15 +218,6 @@ impl Grid {
         self.blocks
             .iter_mut()
             .for_each(|x| x.iter_mut().for_each(|y| y.state = BlockState::Empty));
-    }
-
-    pub fn print(self) {
-        for x in self.blocks {
-            for y in x {
-                print!("{}", format!("{} {}", y.position.x, y.position.y));
-            }
-            println!("");
-        }
     }
 }
 
