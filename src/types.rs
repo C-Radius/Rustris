@@ -1,15 +1,26 @@
-#![allow(dead_code)]
 use crate::types::TetrominoType::{I, J, L, O, S, T, Z};
 use ggez::graphics::Color;
 use ggez::nalgebra::{self as na, geometry::Point2};
 use na::Rotation2;
-use rand::{
-    distributions::{Distribution, Standard},
-    Rng,
-};
+use rand::distributions::{Distribution, Standard};
 
-pub const BLOCK_WIDTH: f32 = 45.0;
-pub const BLOCK_HEIGHT: f32 = 45.0;
+//I
+const COLOR_I: Color = Color::new(42.0 / 255.0, 80.0 / 255.0, 230.0 / 255.0, 255.0 / 255.0);
+//O
+const COLOR_O: Color = Color::new(255.0 / 255.0, 242.0 / 255.0, 117.0 / 255.0, 255.0 / 255.0);
+//T
+const COLOR_T: Color = Color::new(230.0 / 255.0, 46.0 / 255.0, 187.0 / 255.0, 255.0 / 255.0);
+//S
+const COLOR_S: Color = Color::new(51.0 / 255.0, 243.0 / 255.0, 115.0 / 255.0, 255.0 / 255.0);
+//Z
+const COLOR_Z: Color = Color::new(255.0 / 255.0, 136.0 / 255.0, 16.0 / 255.0, 255.0 / 255.0);
+//J
+const COLOR_J: Color = Color::new(31.0 / 255.0, 255.0 / 255.0, 255.0 / 255.0, 255.0 / 255.0);
+//L
+const COLOR_L: Color = Color::new(208.0 / 255.0, 54.0 / 255.0, 54.0 / 255.0, 255.0 / 255.0);
+
+pub const BLOCK_WIDTH: f32 = 35.0;
+pub const BLOCK_HEIGHT: f32 = 35.0;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum BlockState {
@@ -64,14 +75,13 @@ impl Distribution<TetrominoType> for Standard {
         R: rand::Rng + ?std::marker::Sized,
     {
         match rng.gen_range(0, 7) {
-            0 => TetrominoType::I,
-            1 => TetrominoType::O,
-            2 => TetrominoType::T,
-            3 => TetrominoType::S,
-            4 => TetrominoType::Z,
-            5 => TetrominoType::J,
-            6 => TetrominoType::L,
-            _ => TetrominoType::Random,
+            0 => I,
+            1 => O,
+            2 => T,
+            3 => S,
+            4 => Z,
+            5 => J,
+            6 | _ => L,
         }
     }
 }
@@ -80,12 +90,11 @@ impl Distribution<TetrominoType> for Standard {
 pub struct Tetromino {
     pub position: Point2<f32>,
     pub t_tetromino: TetrominoType,
-    pub color: Color,
     pub blocks: Vec<Block>,
 }
 
 impl Tetromino {
-    pub fn new(position: Point2<f32>, t_tetromino: TetrominoType, color: Color) -> Tetromino {
+    pub fn new(position: Point2<f32>, t_tetromino: TetrominoType) -> Tetromino {
         let tt = match t_tetromino {
             TetrominoType::Random => rand::random(),
             _ => t_tetromino,
@@ -94,16 +103,14 @@ impl Tetromino {
         Tetromino {
             position: position,
             t_tetromino: tt,
-            color: color,
             blocks: match tt {
-                I => Tetromino::tetromino_i(&color),
-                O => Tetromino::tetromino_o(&color),
-                T => Tetromino::tetromino_t(&color),
-                S => Tetromino::tetromino_s(&color),
-                Z => Tetromino::tetromino_z(&color),
-                J => Tetromino::tetromino_j(&color),
-                L => Tetromino::tetromino_l(&color),
-                _ => vec![Block::new(Point2::new(0.0, 0.0), color, BlockState::Empty); 4],
+                I => Tetromino::tetromino_i(COLOR_I),
+                O => Tetromino::tetromino_o(COLOR_O),
+                T => Tetromino::tetromino_t(COLOR_T),
+                S => Tetromino::tetromino_s(COLOR_S),
+                Z => Tetromino::tetromino_z(COLOR_Z),
+                J => Tetromino::tetromino_j(COLOR_J),
+                L | _ => Tetromino::tetromino_l(COLOR_L),
             },
         }
     }
@@ -114,177 +121,66 @@ impl Tetromino {
         });
     }
 
-    fn tetromino_i(color: &Color) -> Vec<Block> {
+    fn tetromino_i(color: Color) -> Vec<Block> {
         vec![
-            Block {
-                position: Point2::new(0.0, 0.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-            Block {
-                position: Point2::new(0.0, 1.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-            Block {
-                position: Point2::new(0.0, 2.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-            Block {
-                position: Point2::new(0.0, 3.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
+            Block::new(Point2::new(0.0, 0.0), color, BlockState::Filled),
+            Block::new(Point2::new(0.0, 1.0), color, BlockState::Filled),
+            Block::new(Point2::new(0.0, 2.0), color, BlockState::Filled),
+            Block::new(Point2::new(0.0, 3.0), color, BlockState::Filled),
         ]
     }
 
-    fn tetromino_o(color: &Color) -> Vec<Block> {
+    fn tetromino_o(color: Color) -> Vec<Block> {
         vec![
-            Block {
-                position: Point2::new(0.0, 0.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-            Block {
-                position: Point2::new(1.0, 0.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-            Block {
-                position: Point2::new(0.0, 1.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-            Block {
-                position: Point2::new(1.0, 1.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
+            Block::new(Point2::new(0.0, 0.0), color, BlockState::Filled),
+            Block::new(Point2::new(1.0, 0.0), color, BlockState::Filled),
+            Block::new(Point2::new(0.0, 1.0), color, BlockState::Filled),
+            Block::new(Point2::new(1.0, 1.0), color, BlockState::Filled),
         ]
     }
 
-    fn tetromino_t(color: &Color) -> Vec<Block> {
+    fn tetromino_t(color: Color) -> Vec<Block> {
         vec![
-            Block {
-                position: Point2::new(0.0, 0.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-            Block {
-                position: Point2::new(-1.0, 0.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-            Block {
-                position: Point2::new(1.0, 0.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-            Block {
-                position: Point2::new(0.0, 1.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
+            Block::new(Point2::new(0.0, 0.0), color, BlockState::Filled),
+            Block::new(Point2::new(-1.0, 0.0), color, BlockState::Filled),
+            Block::new(Point2::new(1.0, 0.0), color, BlockState::Filled),
+            Block::new(Point2::new(0.0, 1.0), color, BlockState::Filled),
         ]
     }
 
-    fn tetromino_s(color: &Color) -> Vec<Block> {
+    fn tetromino_s(color: Color) -> Vec<Block> {
         vec![
-            Block {
-                position: Point2::new(0.0, 0.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-            Block {
-                position: Point2::new(-1.0, 0.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-            Block {
-                position: Point2::new(0.0, 1.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-            Block {
-                position: Point2::new(1.0, 1.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-        ]
-    }
-    fn tetromino_z(color: &Color) -> Vec<Block> {
-        vec![
-            Block {
-                position: Point2::new(0.0, 0.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-            Block {
-                position: Point2::new(1.0, 0.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-            Block {
-                position: Point2::new(0.0, 1.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-            Block {
-                position: Point2::new(-1.0, 1.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
+            Block::new(Point2::new(0.0, 0.0), color, BlockState::Filled),
+            Block::new(Point2::new(-1.0, 0.0), color, BlockState::Filled),
+            Block::new(Point2::new(0.0, 1.0), color, BlockState::Filled),
+            Block::new(Point2::new(1.0, 1.0), color, BlockState::Filled),
         ]
     }
 
-    fn tetromino_j(color: &Color) -> Vec<Block> {
+    fn tetromino_z(color: Color) -> Vec<Block> {
         vec![
-            Block {
-                position: Point2::new(0.0, 0.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-            Block {
-                position: Point2::new(0.0, 1.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-            Block {
-                position: Point2::new(0.0, 2.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-            Block {
-                position: Point2::new(-1.0, 0.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
+            Block::new(Point2::new(0.0, 0.0), color, BlockState::Filled),
+            Block::new(Point2::new(1.0, 0.0), color, BlockState::Filled),
+            Block::new(Point2::new(0.0, 1.0), color, BlockState::Filled),
+            Block::new(Point2::new(-1.0, 1.0), color, BlockState::Filled),
         ]
     }
 
-    fn tetromino_l(color: &Color) -> Vec<Block> {
+    fn tetromino_j(color: Color) -> Vec<Block> {
         vec![
-            Block {
-                position: Point2::new(0.0, 0.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-            Block {
-                position: Point2::new(0.0, 1.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-            Block {
-                position: Point2::new(0.0, 2.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
-            Block {
-                position: Point2::new(1.0, 0.0),
-                color: *color,
-                state: BlockState::Filled,
-            },
+            Block::new(Point2::new(0.0, 0.0), color, BlockState::Filled),
+            Block::new(Point2::new(0.0, 1.0), color, BlockState::Filled),
+            Block::new(Point2::new(0.0, 2.0), color, BlockState::Filled),
+            Block::new(Point2::new(-1.0, 0.0), color, BlockState::Filled),
+        ]
+    }
+
+    fn tetromino_l(color: Color) -> Vec<Block> {
+        vec![
+            Block::new(Point2::new(0.0, 0.0), color, BlockState::Filled),
+            Block::new(Point2::new(0.0, 1.0), color, BlockState::Filled),
+            Block::new(Point2::new(0.0, 2.0), color, BlockState::Filled),
+            Block::new(Point2::new(1.0, 0.0), color, BlockState::Filled),
         ]
     }
 }
@@ -297,7 +193,7 @@ pub struct Grid {
 }
 
 impl Grid {
-    pub fn new(width: u32, height: u32, color: &Color) -> Grid {
+    pub fn new(width: u32, height: u32, color: Color) -> Grid {
         Grid {
             width: width,
             height: height,
@@ -308,7 +204,7 @@ impl Grid {
                         .into_iter()
                         .map(|y| Block {
                             position: Point2::new(x as f32, y as f32),
-                            color: *color,
+                            color: color,
                             state: BlockState::Empty,
                         })
                         .collect::<Vec<Block>>()
