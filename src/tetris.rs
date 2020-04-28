@@ -20,7 +20,6 @@ pub struct Tetris {
     grid: Grid,
     tetromino: Option<Tetromino>,
     tetromino_next: Option<Tetromino>,
-    score: u32,
     game_running: bool,
     move_tetromino_down: std::time::Duration,
 }
@@ -31,7 +30,6 @@ impl Tetris {
             grid: Grid::new(GRID_WIDTH, GRID_HEIGHT, Color::new(0.5, 0.5, 0.5, 1.0)),
             tetromino: None,
             tetromino_next: None,
-            score: 0,
             game_running: false,
             move_tetromino_down: Duration::new(0, 0),
         }
@@ -74,8 +72,7 @@ impl Tetris {
     }
 
     pub fn draw_tetromino(&self, ctx: &mut Context) -> GameResult<()> {
-        let info_text =
-            graphics::Text::new(format!("{:?}", self.tetromino.as_ref().unwrap().position));
+        let info_text = graphics::Text::new(format!("{:?}", self.tetromino.as_ref().unwrap()));
         info_text.draw(ctx, DrawParam::new().dest(Point2::new(30.0, 30.0)))?;
 
         let mut tetromino = graphics::MeshBuilder::new();
@@ -137,7 +134,7 @@ impl EventHandler for Tetris {
             if self.tetromino.as_ref().unwrap().position.y == GRID_HEIGHT as f32 {
                 self.generate_tetromino();
             }
-            timer::sleep(Duration::new(0, 0));
+            timer::sleep(Duration::new(1, 0));
         }
         GameResult::Ok(())
     }

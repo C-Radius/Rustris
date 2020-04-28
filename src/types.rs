@@ -44,17 +44,11 @@ impl Block {
         }
     }
 
-    pub fn rotate(&mut self, deg: f32) -> &Block {
+    pub fn rotate(&mut self, deg: f32) -> &mut Block {
         self.position = Rotation2::new(deg.to_radians()) * self.position;
-        self.coords_rounded();
+        self.position.x = self.position.x.round();
+        self.position.y = self.position.y.round();
         self
-    }
-
-    pub fn coords_rounded(&self) -> Point2<f32> {
-        Point2::new(
-            self.position.coords.x.round(),
-            self.position.coords.y.round(),
-        )
     }
 }
 
@@ -116,10 +110,11 @@ impl Tetromino {
         }
     }
 
-    pub fn rotate(&mut self) {
+    pub fn rotate(&mut self) -> &mut Tetromino {
         self.blocks.iter_mut().for_each(|p: &mut Block| {
             p.rotate(90.0);
         });
+        self
     }
 
     fn tetromino_i(color: Color) -> Vec<Block> {
@@ -231,13 +226,22 @@ mod test {
             Color::new(1.0, 1.0, 1.0, 1.0),
             BlockState::Filled,
         );
-        let y = Block::new(
+        let mut y = Block::new(
             Point2::new(0.0, 1.0),
             Color::new(1.0, 1.0, 1.0, 1.0),
             BlockState::Filled,
         );
 
-        println!("{:?}\n{:?}", x, y);
-        assert_eq!(x.rotate(-90.0f32).coords_rounded(), y.position);
+        //Testing a full rotation in 90 degrees increments
+        assert_eq!(x.rotate(-90.0f32), &y);
+        y.position.x = 1.0;
+        y.position.y = 0.0;
+        assert_eq!(x.rotate(-90.0f32).position, y.position);
+        y.position.x = 0.0;
+        y.position.y = -1.0;
+        assert_eq!(x.rotate(-90.0f32).position, y.position);
+        y.position.x = -1.0;
+        y.position.y = 0.0;
+        assert_eq!(x.rotate(-90.0f32).position, y.position);
     }
 }
