@@ -53,6 +53,26 @@ impl Block {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
+pub enum Rotation {
+    _0,
+    _90,
+    _180,
+    _270,
+}
+
+impl Rotation {
+    pub fn rotate(&mut self) -> &Rotation {
+        match self {
+            Rotation::_0 => *self = Rotation::_90,
+            Rotation::_90 => *self = Rotation::_180,
+            Rotation::_180 => *self = Rotation::_270,
+            Rotation::_270 => *self = Rotation::_0,
+        }
+        self
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum TetrominoType {
     I,
     O,
@@ -79,6 +99,14 @@ impl Distribution<TetrominoType> for Standard {
             6 | _ => L,
         }
     }
+}
+
+#[derive(Debug)]
+pub enum CollisionType {
+    Top,
+    Left,
+    Right,
+    Bottom,
 }
 
 #[derive(Debug)]
@@ -183,8 +211,8 @@ impl Tetromino {
 
 #[derive(Debug)]
 pub struct Grid {
-    width: u32,
-    height: u32,
+    pub width: u32,
+    pub height: u32,
     pub blocks: Vec<Vec<Block>>,
 }
 
@@ -207,6 +235,15 @@ impl Grid {
                 })
                 .collect::<Vec<Vec<Block>>>(),
         }
+    }
+
+    pub fn check_occupied(&self, x: u32, y: u32) -> bool {
+        if x <= self.width && y <= self.height && x >= 0 && y >= 0 {
+            if self.blocks[x as usize][y as usize].state == BlockState::Filled {
+                return true;
+            }
+        }
+        false
     }
 
     pub fn reset(&mut self) {
