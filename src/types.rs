@@ -43,13 +43,6 @@ impl Block {
             state: state,
         }
     }
-
-    pub fn rotate(&mut self, deg: f32) -> &mut Block {
-        self.position = Rotation2::new(deg.to_radians()) * self.position;
-        self.position.x = self.position.x.round();
-        self.position.y = self.position.y.round();
-        self
-    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -61,12 +54,21 @@ pub enum Rotation {
 }
 
 impl Rotation {
-    pub fn rotate(&mut self) -> &Rotation {
+    pub fn rotate_cw(&mut self) -> &Rotation {
         match self {
             Rotation::_0 => *self = Rotation::_90,
             Rotation::_90 => *self = Rotation::_180,
             Rotation::_180 => *self = Rotation::_270,
             Rotation::_270 => *self = Rotation::_0,
+        }
+        self
+    }
+    pub fn rotate_ccw(&mut self) -> &Rotation {
+        match self {
+            Rotation::_0 => *self = Rotation::_270,
+            Rotation::_270 => *self = Rotation::_180,
+            Rotation::_180 => *self = Rotation::_90,
+            Rotation::_90 => *self = Rotation::_0,
         }
         self
     }
@@ -81,7 +83,6 @@ pub enum TetrominoType {
     Z,
     J,
     L,
-    Random,
 }
 
 impl Distribution<TetrominoType> for Standard {
@@ -89,7 +90,7 @@ impl Distribution<TetrominoType> for Standard {
     where
         R: rand::Rng + ?std::marker::Sized,
     {
-        match rng.gen_range(0, 7) {
+        match rng.gen_range(0, 6) {
             0 => I,
             1 => O,
             2 => T,
@@ -102,110 +103,206 @@ impl Distribution<TetrominoType> for Standard {
 }
 
 #[derive(Debug)]
-pub enum CollisionType {
-    Top,
-    Left,
-    Right,
-    Bottom,
-}
-
-#[derive(Debug)]
 pub struct Tetromino {
     pub position: Point2<f32>,
-    pub t_tetromino: TetrominoType,
-    pub blocks: Vec<Block>,
+    pub rotation: Rotation,
+    pub t_type: TetrominoType,
 }
 
 impl Tetromino {
-    pub fn new(position: Point2<f32>, t_tetromino: TetrominoType) -> Tetromino {
-        let tt = match t_tetromino {
-            TetrominoType::Random => rand::random(),
-            _ => t_tetromino,
-        };
-
+    pub fn random(position: Point2<f32>, rotation: Rotation) -> Tetromino {
         Tetromino {
             position: position,
-            t_tetromino: tt,
-            blocks: match tt {
-                I => Tetromino::tetromino_i(COLOR_I),
-                O => Tetromino::tetromino_o(COLOR_O),
-                T => Tetromino::tetromino_t(COLOR_T),
-                S => Tetromino::tetromino_s(COLOR_S),
-                Z => Tetromino::tetromino_z(COLOR_Z),
-                J => Tetromino::tetromino_j(COLOR_J),
-                L | _ => Tetromino::tetromino_l(COLOR_L),
-            },
+            rotation: rotation,
+            t_type: rand::random(),
         }
     }
 
-    pub fn rotate(&mut self) -> &mut Tetromino {
-        self.blocks.iter_mut().for_each(|p: &mut Block| {
-            p.rotate(90.0);
-        });
-        self
-    }
-
-    fn tetromino_i(color: Color) -> Vec<Block> {
-        vec![
-            Block::new(Point2::new(0.0, 0.0), color, BlockState::Filled),
-            Block::new(Point2::new(0.0, 1.0), color, BlockState::Filled),
-            Block::new(Point2::new(0.0, 2.0), color, BlockState::Filled),
-            Block::new(Point2::new(0.0, 3.0), color, BlockState::Filled),
-        ]
-    }
-
-    fn tetromino_o(color: Color) -> Vec<Block> {
-        vec![
-            Block::new(Point2::new(0.0, 0.0), color, BlockState::Filled),
-            Block::new(Point2::new(1.0, 0.0), color, BlockState::Filled),
-            Block::new(Point2::new(0.0, 1.0), color, BlockState::Filled),
-            Block::new(Point2::new(1.0, 1.0), color, BlockState::Filled),
-        ]
-    }
-
-    fn tetromino_t(color: Color) -> Vec<Block> {
-        vec![
-            Block::new(Point2::new(0.0, 0.0), color, BlockState::Filled),
-            Block::new(Point2::new(-1.0, 0.0), color, BlockState::Filled),
-            Block::new(Point2::new(1.0, 0.0), color, BlockState::Filled),
-            Block::new(Point2::new(0.0, 1.0), color, BlockState::Filled),
-        ]
-    }
-
-    fn tetromino_s(color: Color) -> Vec<Block> {
-        vec![
-            Block::new(Point2::new(0.0, 0.0), color, BlockState::Filled),
-            Block::new(Point2::new(-1.0, 0.0), color, BlockState::Filled),
-            Block::new(Point2::new(0.0, 1.0), color, BlockState::Filled),
-            Block::new(Point2::new(1.0, 1.0), color, BlockState::Filled),
-        ]
-    }
-
-    fn tetromino_z(color: Color) -> Vec<Block> {
-        vec![
-            Block::new(Point2::new(0.0, 0.0), color, BlockState::Filled),
-            Block::new(Point2::new(1.0, 0.0), color, BlockState::Filled),
-            Block::new(Point2::new(0.0, 1.0), color, BlockState::Filled),
-            Block::new(Point2::new(-1.0, 1.0), color, BlockState::Filled),
-        ]
-    }
-
-    fn tetromino_j(color: Color) -> Vec<Block> {
-        vec![
-            Block::new(Point2::new(0.0, 0.0), color, BlockState::Filled),
-            Block::new(Point2::new(0.0, 1.0), color, BlockState::Filled),
-            Block::new(Point2::new(0.0, 2.0), color, BlockState::Filled),
-            Block::new(Point2::new(-1.0, 0.0), color, BlockState::Filled),
-        ]
-    }
-
-    fn tetromino_l(color: Color) -> Vec<Block> {
-        vec![
-            Block::new(Point2::new(0.0, 0.0), color, BlockState::Filled),
-            Block::new(Point2::new(0.0, 1.0), color, BlockState::Filled),
-            Block::new(Point2::new(0.0, 2.0), color, BlockState::Filled),
-            Block::new(Point2::new(1.0, 0.0), color, BlockState::Filled),
-        ]
+    pub fn blocks(&self) -> Vec<Block> {
+        match self.t_type {
+            TetrominoType::I => match self.rotation {
+                Rotation::_0 => vec![
+                    Block::new(Point2::new(-2.0, 0.0), COLOR_I, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, 0.0), COLOR_I, BlockState::Filled),
+                    Block::new(Point2::new(0.0, 0.0), COLOR_I, BlockState::Filled),
+                    Block::new(Point2::new(1.0, 0.0), COLOR_I, BlockState::Filled),
+                ],
+                Rotation::_90 => vec![
+                    Block::new(Point2::new(0.0, 2.0), COLOR_I, BlockState::Filled),
+                    Block::new(Point2::new(0.0, 1.0), COLOR_I, BlockState::Filled),
+                    Block::new(Point2::new(0.0, 0.0), COLOR_I, BlockState::Filled),
+                    Block::new(Point2::new(0.0, -1.0), COLOR_I, BlockState::Filled),
+                ],
+                Rotation::_180 => vec![
+                    Block::new(Point2::new(-2.0, 0.0), COLOR_I, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, 0.0), COLOR_I, BlockState::Filled),
+                    Block::new(Point2::new(0.0, 0.0), COLOR_I, BlockState::Filled),
+                    Block::new(Point2::new(1.0, 0.0), COLOR_I, BlockState::Filled),
+                ],
+                Rotation::_270 => vec![
+                    Block::new(Point2::new(0.0, 2.0), COLOR_I, BlockState::Filled),
+                    Block::new(Point2::new(0.0, 1.0), COLOR_I, BlockState::Filled),
+                    Block::new(Point2::new(0.0, 0.0), COLOR_I, BlockState::Filled),
+                    Block::new(Point2::new(0.0, -1.0), COLOR_I, BlockState::Filled),
+                ],
+            },
+            TetrominoType::O => match self.rotation {
+                Rotation::_0 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_O, BlockState::Filled),
+                    Block::new(Point2::new(1.0, 0.0), COLOR_O, BlockState::Filled),
+                    Block::new(Point2::new(0.0, 1.0), COLOR_O, BlockState::Filled),
+                    Block::new(Point2::new(1.0, 1.0), COLOR_O, BlockState::Filled),
+                ],
+                Rotation::_90 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_O, BlockState::Filled),
+                    Block::new(Point2::new(1.0, 0.0), COLOR_O, BlockState::Filled),
+                    Block::new(Point2::new(0.0, 1.0), COLOR_O, BlockState::Filled),
+                    Block::new(Point2::new(1.0, 1.0), COLOR_O, BlockState::Filled),
+                ],
+                Rotation::_180 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_O, BlockState::Filled),
+                    Block::new(Point2::new(1.0, 0.0), COLOR_O, BlockState::Filled),
+                    Block::new(Point2::new(0.0, 1.0), COLOR_O, BlockState::Filled),
+                    Block::new(Point2::new(1.0, 1.0), COLOR_O, BlockState::Filled),
+                ],
+                Rotation::_270 => vec![
+                    Block::new(Point2::new(-2.0, 0.0), COLOR_O, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, 0.0), COLOR_O, BlockState::Filled),
+                    Block::new(Point2::new(0.0, 0.0), COLOR_O, BlockState::Filled),
+                    Block::new(Point2::new(1.0, 0.0), COLOR_O, BlockState::Filled),
+                ],
+            },
+            TetrominoType::T => match self.rotation {
+                Rotation::_0 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_T, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, 0.0), COLOR_T, BlockState::Filled),
+                    Block::new(Point2::new(1.0, 0.0), COLOR_T, BlockState::Filled),
+                    Block::new(Point2::new(0.0, 1.0), COLOR_T, BlockState::Filled),
+                ],
+                Rotation::_90 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_T, BlockState::Filled),
+                    Block::new(Point2::new(0.0, 1.0), COLOR_T, BlockState::Filled),
+                    Block::new(Point2::new(0.0, -1.0), COLOR_T, BlockState::Filled),
+                    Block::new(Point2::new(1.0, 0.0), COLOR_T, BlockState::Filled),
+                ],
+                Rotation::_180 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_T, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, 0.0), COLOR_T, BlockState::Filled),
+                    Block::new(Point2::new(1.0, 0.0), COLOR_T, BlockState::Filled),
+                    Block::new(Point2::new(0.0, -1.0), COLOR_T, BlockState::Filled),
+                ],
+                Rotation::_270 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_T, BlockState::Filled),
+                    Block::new(Point2::new(0.0, 1.0), COLOR_T, BlockState::Filled),
+                    Block::new(Point2::new(0.0, -1.0), COLOR_T, BlockState::Filled),
+                    Block::new(Point2::new(0.0, -1.0), COLOR_T, BlockState::Filled),
+                ],
+            },
+            TetrominoType::S => match self.rotation {
+                Rotation::_0 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_S, BlockState::Filled),
+                    Block::new(Point2::new(1.0, 0.0), COLOR_S, BlockState::Filled),
+                    Block::new(Point2::new(0.0, -1.0), COLOR_S, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, -1.0), COLOR_S, BlockState::Filled),
+                ],
+                Rotation::_90 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_S, BlockState::Filled),
+                    Block::new(Point2::new(0.0, -1.0), COLOR_S, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, 0.0), COLOR_S, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, 1.0), COLOR_S, BlockState::Filled),
+                ],
+                Rotation::_180 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_S, BlockState::Filled),
+                    Block::new(Point2::new(1.0, 0.0), COLOR_S, BlockState::Filled),
+                    Block::new(Point2::new(0.0, -1.0), COLOR_S, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, -1.0), COLOR_S, BlockState::Filled),
+                ],
+                Rotation::_270 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_S, BlockState::Filled),
+                    Block::new(Point2::new(0.0, -1.0), COLOR_S, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, 0.0), COLOR_S, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, 1.0), COLOR_S, BlockState::Filled),
+                ],
+            },
+            TetrominoType::Z => match self.rotation {
+                Rotation::_0 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_Z, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, 0.0), COLOR_Z, BlockState::Filled),
+                    Block::new(Point2::new(0.0, -1.0), COLOR_Z, BlockState::Filled),
+                    Block::new(Point2::new(1.0, -1.0), COLOR_Z, BlockState::Filled),
+                ],
+                Rotation::_90 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_Z, BlockState::Filled),
+                    Block::new(Point2::new(0.0, 1.0), COLOR_Z, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, 0.0), COLOR_Z, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, -1.0), COLOR_Z, BlockState::Filled),
+                ],
+                Rotation::_180 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_Z, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, 0.0), COLOR_Z, BlockState::Filled),
+                    Block::new(Point2::new(0.0, -1.0), COLOR_Z, BlockState::Filled),
+                    Block::new(Point2::new(1.0, -1.0), COLOR_Z, BlockState::Filled),
+                ],
+                Rotation::_270 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_Z, BlockState::Filled),
+                    Block::new(Point2::new(0.0, 1.0), COLOR_Z, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, 0.0), COLOR_Z, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, -1.0), COLOR_Z, BlockState::Filled),
+                ],
+            },
+            TetrominoType::J => match self.rotation {
+                Rotation::_0 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_J, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, 0.0), COLOR_J, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, 1.0), COLOR_J, BlockState::Filled),
+                    Block::new(Point2::new(1.0, 0.0), COLOR_J, BlockState::Filled),
+                ],
+                Rotation::_90 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_J, BlockState::Filled),
+                    Block::new(Point2::new(0.0, 1.0), COLOR_J, BlockState::Filled),
+                    Block::new(Point2::new(1.0, 1.0), COLOR_J, BlockState::Filled),
+                    Block::new(Point2::new(0.0, -1.0), COLOR_J, BlockState::Filled),
+                ],
+                Rotation::_180 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_J, BlockState::Filled),
+                    Block::new(Point2::new(1.0, 0.0), COLOR_J, BlockState::Filled),
+                    Block::new(Point2::new(1.0, -1.0), COLOR_J, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, 0.0), COLOR_J, BlockState::Filled),
+                ],
+                Rotation::_270 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_J, BlockState::Filled),
+                    Block::new(Point2::new(0.0, -1.0), COLOR_J, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, -1.0), COLOR_J, BlockState::Filled),
+                    Block::new(Point2::new(0.0, 1.0), COLOR_J, BlockState::Filled),
+                ],
+            },
+            TetrominoType::L => match self.rotation {
+                Rotation::_0 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_L, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, 0.0), COLOR_L, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, -1.0), COLOR_L, BlockState::Filled),
+                    Block::new(Point2::new(1.0, 0.0), COLOR_L, BlockState::Filled),
+                ],
+                Rotation::_90 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_L, BlockState::Filled),
+                    Block::new(Point2::new(0.0, 1.0), COLOR_L, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, 1.0), COLOR_L, BlockState::Filled),
+                    Block::new(Point2::new(0.0, -1.0), COLOR_L, BlockState::Filled),
+                ],
+                Rotation::_180 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_L, BlockState::Filled),
+                    Block::new(Point2::new(1.0, 0.0), COLOR_L, BlockState::Filled),
+                    Block::new(Point2::new(1.0, 1.0), COLOR_L, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, 0.0), COLOR_L, BlockState::Filled),
+                ],
+                Rotation::_270 => vec![
+                    Block::new(Point2::new(0.0, 0.0), COLOR_L, BlockState::Filled),
+                    Block::new(Point2::new(0.0, -1.0), COLOR_L, BlockState::Filled),
+                    Block::new(Point2::new(1.0, -1.0), COLOR_L, BlockState::Filled),
+                    Block::new(Point2::new(0.0, 1.0), COLOR_L, BlockState::Filled),
+                ],
+            },
+        }
     }
 }
 
@@ -253,32 +350,3 @@ impl Grid {
     }
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
-    #[test]
-    fn test_rotation() {
-        let mut x = Block::new(
-            Point2::new(-1.0, 0.0),
-            Color::new(1.0, 1.0, 1.0, 1.0),
-            BlockState::Filled,
-        );
-        let mut y = Block::new(
-            Point2::new(0.0, 1.0),
-            Color::new(1.0, 1.0, 1.0, 1.0),
-            BlockState::Filled,
-        );
-
-        //Testing a full rotation in 90 degrees increments
-        assert_eq!(x.rotate(-90.0f32), &y);
-        y.position.x = 1.0;
-        y.position.y = 0.0;
-        assert_eq!(x.rotate(-90.0f32).position, y.position);
-        y.position.x = 0.0;
-        y.position.y = -1.0;
-        assert_eq!(x.rotate(-90.0f32).position, y.position);
-        y.position.x = -1.0;
-        y.position.y = 0.0;
-        assert_eq!(x.rotate(-90.0f32).position, y.position);
-    }
-}

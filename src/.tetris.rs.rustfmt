@@ -1,3 +1,4 @@
+use crate::types::Tetromino;
 use ggez::event::EventHandler;
 use ggez::event::KeyMods;
 use ggez::graphics;
@@ -54,25 +55,26 @@ impl Tetris {
 
     pub fn generate_tetromino(&mut self) {
         if self.tetromino_next.is_none() {
-            self.tetromino_next = Some(Tetromino::random(Point2::new(5.0, 0.0), Rotation::_0));
+            self.tetromino_next =
+                Some(Tetromino::new(Point2::new(5.0, 0.0), TetrominoType::Random));
         }
         self.tetromino = self.tetromino_next.take();
-        self.tetromino_next = Some(Tetromino::random(Point2::new(5.0, 0.0), Rotation::_0));
+        self.tetromino_next = Some(Tetromino::new(Point2::new(5.0, 0.0), TetrominoType::Random));
     }
 
-    //LAST ADDITION -> Continue from here
-    pub fn calculate_offset(grid: &Grid, tetromino: &Tetromino) -> Point2<f32> {
+    pub fn calculate_offset(&self) -> Point2<f32> {
         let mut offset = Point2::new(0.0, 0.0);
+        let tetromino = self.tetromino.as_ref().unwrap();
 
-        tetromino.blocks().iter().for_each(|block| {
-            let grid_width = grid.width as f32;
-            let grid_height = grid.height as f32;
-            let tetromino_x = tetromino.position.x + block.position.x;
-            let tetromino_y = tetromino.position.y + block.position.y;
+        tetromino.blocks.iter().for_each(|block| {
+            let grid_width = self.grid.width as f32;
+            let grid_height= self.grid.height as f32;
+            let tetromino_x= tetromino.position.x + block.position.x;
+            let tetromino_y= tetromino.position.y + block.position.y;
 
             if tetromino_x >= grid_width {
-                if 0.0 - (tetromino_x % grid_width) < offset.x {
-                    offset.x = -(tetromino_x % grid_width)
+                if 0.0 -(tetromino_x % 10.0) < offset.x {
+                    offset.x = -(tetromino_x % 10.0)
                 }
             } else if tetromino_x < 0.0 {
                 if tetromino_x < offset.x {
@@ -83,47 +85,49 @@ impl Tetris {
             }
 
             if tetromino_y >= grid_height {
+
             } else {
+
             }
+
         });
 
         offset
     }
 
     pub fn move_tetromino(&mut self, direction: &MoveDirection) {
+        let tetromino = self.tetromino.as_mut().unwrap();
         let grid = &self.grid;
 
         match direction {
             MoveDirection::Left => {
-                let tetromino = self.tetromino.as_mut().unwrap();
                 if tetromino.position.x - 1.0 >= 0.0 {
                     tetromino.position.x -= 1.0;
                 }
             }
             MoveDirection::Right => {
-                let tetromino = self.tetromino.as_mut().unwrap();
                 if tetromino.position.x + 1.0 < grid.width as f32 {
                     tetromino.position.x += 1.0;
                 }
             }
             MoveDirection::Up => {
-                let tetromino = self.tetromino.as_mut().unwrap();
-                tetromino.rotation.rotate_cw();
+                tetromino.rotate();
             }
             MoveDirection::Down => {
-                let tetromino = self.tetromino.as_mut().unwrap();
                 tetromino.position.y += 1.0;
             }
         }
 
-        let offset = Tetris::calculate_offset(&self.grid, &self.tetromino.as_ref().unwrap());
-        let tetromino = self.tetromino.as_mut().unwrap();
 
-        tetromino.position.x += offset.x;
-        tetromino.position.y += offset.y;
         if tetromino.position.y >= GRID_HEIGHT as f32 {
             self.generate_tetromino();
         }
+                    let offset = self.calculate_offset();
+
+                    self.tetromino.as_mut().unwrap().position.x +=  offset.x;
+                    self.tetromino.as_mut().unwrap().position.y +=  offset.y;
+
+
     }
 
     pub fn draw_grid(&self, ctx: &mut Context) -> GameResult<()> {
@@ -151,7 +155,7 @@ impl Tetris {
     pub fn draw_tetromino(&self, ctx: &mut Context) -> GameResult<()> {
         let mut tetromino = graphics::MeshBuilder::new();
         let tet = self.tetromino.as_ref().unwrap();
-        tet.blocks().iter().for_each(|x| {
+        tet.blocks.iter().for_each(|x| {
             tetromino.rectangle(
                 DrawMode::stroke(3.0),
                 Rect::new(
@@ -185,10 +189,11 @@ impl EventHandler for Tetris {
                 if self.move_tetromino_down.as_millis() >= MOVE_TETROMINO_EVERY {
                     self.move_tetromino(&MoveDirection::Down);
                     self.move_tetromino_down = Duration::new(0, 0);
+
                 }
 
                 if input::keyboard::is_key_pressed(ctx, input::keyboard::KeyCode::Up) {
-                    self.tetromino.as_mut().unwrap().rotation.rotate_cw();
+                    self.tetromino.as_mut().unwrap().rotate();
                 }
             }
             self.last_update = Instant::now();
