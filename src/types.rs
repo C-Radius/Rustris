@@ -195,7 +195,7 @@ impl Tetromino {
                     Block::new(Point2::new(0.0, 0.0), COLOR_T, BlockState::Filled),
                     Block::new(Point2::new(0.0, 1.0), COLOR_T, BlockState::Filled),
                     Block::new(Point2::new(0.0, -1.0), COLOR_T, BlockState::Filled),
-                    Block::new(Point2::new(0.0, -1.0), COLOR_T, BlockState::Filled),
+                    Block::new(Point2::new(-1.0, 0.0), COLOR_T, BlockState::Filled),
                 ],
             },
             TetrominoType::S => match self.rotation {

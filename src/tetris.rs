@@ -63,16 +63,16 @@ impl Tetris {
     //LAST ADDITION -> Continue from here
     pub fn calculate_offset(grid: &Grid, tetromino: &Tetromino) -> Point2<f32> {
         let mut offset = Point2::new(0.0, 0.0);
+        let grid_width = grid.width as f32;
+        let grid_height = grid.height as f32;
 
         tetromino.blocks().iter().for_each(|block| {
-            let grid_width = grid.width as f32;
-            let grid_height = grid.height as f32;
             let tetromino_x = tetromino.position.x + block.position.x;
             let tetromino_y = tetromino.position.y + block.position.y;
 
             if tetromino_x >= grid_width {
-                if 0.0 - (tetromino_x % grid_width) < offset.x {
-                    offset.x = -(tetromino_x % grid_width)
+                if offset.x > grid_width - tetromino_x {
+                    offset.x = grid_width - tetromino_x;
                 }
             } else if tetromino_x < 0.0 {
                 if tetromino_x < offset.x {
