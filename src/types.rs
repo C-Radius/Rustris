@@ -1,7 +1,6 @@
 use crate::types::TetrominoType::{I, J, L, O, S, T, Z};
 use ggez::graphics::Color;
-use ggez::nalgebra::{self as na, geometry::Point2};
-use na::Rotation2;
+use ggez::nalgebra::geometry::Point2;
 use rand::distributions::{Distribution, Standard};
 
 //I
@@ -63,6 +62,7 @@ impl Rotation {
         }
         self
     }
+    #[allow(dead_code)]
     pub fn rotate_ccw(&mut self) -> &Rotation {
         match self {
             Rotation::_0 => *self = Rotation::_270,
@@ -102,7 +102,7 @@ impl Distribution<TetrominoType> for Standard {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Tetromino {
     pub position: Point2<f32>,
     pub rotation: Rotation,
@@ -335,7 +335,7 @@ impl Grid {
     }
 
     pub fn check_occupied(&self, x: u32, y: u32) -> bool {
-        if x <= self.width && y <= self.height && x >= 0 && y >= 0 {
+        if x <= self.width && y <= self.height {
             if self.blocks[x as usize][y as usize].state == BlockState::Filled {
                 return true;
             }

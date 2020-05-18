@@ -13,8 +13,8 @@ use ggez::nalgebra::geometry::Point2;
 
 const MOVE_TETROMINO_EVERY: u128 = 500;
 
-const GRID_WIDTH: u32 = 11;
-const GRID_HEIGHT: u32 = 21;
+const GRID_WIDTH: u32 = 10;
+const GRID_HEIGHT: u32 = 22;
 
 const UPDATES_PER_SECOND: f32 = 4.0;
 const MILLIS_PER_UPDATE: u64 = (1.0 / UPDATES_PER_SECOND * 1000.0) as u64;
@@ -60,70 +60,115 @@ impl Tetris {
         self.tetromino_next = Some(Tetromino::random(Point2::new(5.0, 0.0), Rotation::_0));
     }
 
-    //LAST ADDITION -> Continue from here
     pub fn calculate_offset(grid: &Grid, tetromino: &Tetromino) -> Point2<f32> {
-        let mut offset = Point2::new(0.0, 0.0);
-        let grid_width = grid.width as f32;
-        let grid_height = grid.height as f32;
+        let mut offset = Point2::new(0.0f32, 0.0f32);
+        let grid_width = grid.width as f32 - 1.0;
 
         tetromino.blocks().iter().for_each(|block| {
-            let tetromino_x = tetromino.position.x + block.position.x;
-            let tetromino_y = tetromino.position.y + block.position.y;
-
-            if tetromino_x >= grid_width {
-                if offset.x > grid_width - tetromino_x {
-                    offset.x = grid_width - tetromino_x;
+            let abs_tetromino_x = tetromino.position.x + block.position.x;
+            if abs_tetromino_x >= grid_width {
+                if grid_width - abs_tetromino_x < offset.x {
+                    offset.x = grid_width - abs_tetromino_x;
                 }
-            } else if tetromino_x < 0.0 {
-                if tetromino_x < offset.x {
-                    offset.x = tetromino_x.abs()
-                }
-            } else {
-                offset.x = 0.0;
-            }
-
-            if tetromino_y >= grid_height {
-            } else {
+            } else if abs_tetromino_x < 0.0 {
+                offset.x = abs_tetromino_x.abs();
             }
         });
 
         offset
     }
 
-    pub fn move_tetromino(&mut self, direction: &MoveDirection) {
-        let grid = &self.grid;
+    pub fn is_next_pos_empty(&self, direction: &MoveDirection) -> bool {
+        let mut ret_val = true;
+        let mut tmp_tetromino = self.tetromino.unwrap().clone();
 
         match direction {
             MoveDirection::Left => {
-                let tetromino = self.tetromino.as_mut().unwrap();
-                if tetromino.position.x - 1.0 >= 0.0 {
-                    tetromino.position.x -= 1.0;
-                }
+                tmp_tetromino.position.x -= 1.0;
             }
             MoveDirection::Right => {
-                let tetromino = self.tetromino.as_mut().unwrap();
-                if tetromino.position.x + 1.0 < grid.width as f32 {
-                    tetromino.position.x += 1.0;
-                }
-            }
-            MoveDirection::Up => {
-                let tetromino = self.tetromino.as_mut().unwrap();
-                tetromino.rotation.rotate_cw();
+                tmp_tetromino.position.x += 1.0;
             }
             MoveDirection::Down => {
-                let tetromino = self.tetromino.as_mut().unwrap();
-                tetromino.position.y += 1.0;
+                tmp_tetromino.position.y += 1.0;
+            }
+            MoveDirection::Up => {}
+        };
+
+        tmp_tetromino.blocks().iter().for_each(|block| {
+            if tmp_tetromino.position.x + block.position.x < self.grid.width as f32
+                && tmp_tetromino.position.x + block.position.x >= 0.0
+            {
+                if self.grid.check_occupied(
+                    (tmp_tetromino.position.x + block.position.x) as u32,
+                    (tmp_tetromino.position.y + block.position.y) as u32,
+                ) {
+                    ret_val = false;
+                }
+            } else {
+                ret_val = false;
+            }
+        });
+        ret_val
+    }
+
+    pub fn move_tetromino(&mut self, direction: &MoveDirection) -> GameResult<()> {
+        let grid = &self.grid;
+
+        if self.is_next_pos_empty(direction) {
+            match direction {
+                MoveDirection::Left => {
+                    let tetromino = self.tetromino.as_mut().unwrap();
+                    if tetromino.position.x - 1.0 >= 0.0 {
+                        tetromino.position.x -= 1.0;
+                    }
+                }
+                MoveDirection::Right => {
+                    let tetromino = self.tetromino.as_mut().unwrap();
+                    if tetromino.position.x + 1.0 < grid.width as f32 {
+                        tetromino.position.x += 1.0;
+                    }
+                }
+                MoveDirection::Up => {
+                    let tetromino = self.tetromino.as_mut().unwrap();
+                    tetromino.rotation.rotate_cw();
+                }
+                MoveDirection::Down => {
+                    let tetromino = self.tetromino.as_mut().unwrap();
+                    tetromino.position.y += 1.0;
+                }
             }
         }
 
         let offset = Tetris::calculate_offset(&self.grid, &self.tetromino.as_ref().unwrap());
         let tetromino = self.tetromino.as_mut().unwrap();
-
         tetromino.position.x += offset.x;
         tetromino.position.y += offset.y;
-        if tetromino.position.y >= GRID_HEIGHT as f32 {
+
+        if tetromino.position.y == GRID_HEIGHT as f32 - 4.0 as f32 {
+            //todo: We need to fix this so it calculates according to all blocks in tetromino
+            self.lock_tetromino();
             self.generate_tetromino();
         }
+        Ok(())
+    }
+
+    pub fn lock_tetromino(&mut self) {
+        self.tetromino
+            .as_ref()
+            .unwrap()
+            .blocks()
+            .iter()
+            .for_each(|block| {
+                let abs_block_x = self.tetromino.as_ref().unwrap().position.x + block.position.x;
+                let abs_block_y = self.tetromino.as_ref().unwrap().position.y + block.position.y;
+
+                self.grid.blocks[abs_block_x as usize][abs_block_y as usize] = Block {
+                    position: Point2::new(abs_block_x, abs_block_y),
+                    color: block.color,
+                    state: BlockState::Filled,
+                };
+            });
     }
 
     pub fn draw_grid(&self, ctx: &mut Context) -> GameResult<()> {
@@ -131,7 +176,10 @@ impl Tetris {
         self.grid.blocks.iter().for_each(|x| {
             x.iter().for_each(|y| {
                 grid.rectangle(
-                    DrawMode::Stroke(StrokeOptions::default()),
+                    match y.state {
+                        BlockState::Filled => DrawMode::fill(),
+                        BlockState::Empty => DrawMode::Stroke(StrokeOptions::default()),
+                    },
                     Rect::new(
                         y.position.x * BLOCK_WIDTH,
                         y.position.y * BLOCK_HEIGHT,
@@ -153,7 +201,7 @@ impl Tetris {
         let tet = self.tetromino.as_ref().unwrap();
         tet.blocks().iter().for_each(|x| {
             tetromino.rectangle(
-                DrawMode::stroke(3.0),
+                DrawMode::fill(),
                 Rect::new(
                     (tet.position.x + x.position.x) * BLOCK_WIDTH,
                     (tet.position.y + x.position.y) * BLOCK_HEIGHT,
