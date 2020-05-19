@@ -334,13 +334,67 @@ impl Grid {
         }
     }
 
-    pub fn check_occupied(&self, x: u32, y: u32) -> bool {
-        if x <= self.width && y <= self.height {
-            if self.blocks[x as usize][y as usize].state == BlockState::Filled {
-                return true;
+    pub fn find_line_clears(&mut self) -> Vec<u32> {
+        let mut empty_found: bool = false;
+        let mut lines: Vec<u32> = Vec::new();
+
+        for y in 0..self.height {
+            for x in 0..self.width {
+                if self.blocks[x as usize][y as usize].state == BlockState::Empty {
+                    empty_found = true;
+                }
+            }
+            if !empty_found {
+                lines.push(y);
+            }
+            empty_found = false;
+        }
+        lines
+    }
+
+    pub fn clear_line(&mut self, line_index: u32) -> bool {
+        if line_index >= self.height {
+            return false;
+        }
+        for (index, row) in self.blocks.iter_mut().enumerate() {
+            row.remove(line_index as usize);
+            row.insert(
+                0,
+                Block::new(
+                    Point2::new(index as f32, 0 as f32),
+                    Color::new(0.5, 0.5, 0.5, 1.0),
+                    BlockState::Empty,
+                ),
+            );
+        }
+        true
+    }
+
+    pub fn clear_lines(&mut self) -> bool {
+        let lines = self.find_line_clears();
+
+        if !lines.is_empty() {
+            lines.iter().for_each(|line| {
+                self.clear_line(*line);
+            });
+        }
+
+        for (x, row) in self.blocks.iter_mut().enumerate() {
+            for (y, col) in row.iter_mut().enumerate() {
+                col.position.x = x as f32;
+                col.position.y = y as f32;
             }
         }
-        false
+        true
+    }
+
+    pub fn check_occupied(&self, x: u32, y: u32) -> bool {
+        if x < self.width && y < self.height {
+            if self.blocks[x as usize][y as usize].state == BlockState::Empty {
+                return false;
+            }
+        }
+        true
     }
 
     pub fn reset(&mut self) {
