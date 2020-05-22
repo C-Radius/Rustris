@@ -38,6 +38,7 @@ pub struct Tetris {
     last_update: Instant,
     to_lock: bool,
     lock_timer: Duration,
+    score: u64,
 }
 
 impl Tetris {
@@ -52,6 +53,7 @@ impl Tetris {
             last_update: Instant::now(),
             to_lock: false,
             lock_timer: Duration::new(0, 0),
+            score: 0,
         }
     }
 
@@ -136,11 +138,6 @@ impl Tetris {
         //Check if incoming move is valid. If yes, swap current tetromino with new one.
         //If not, keep current tetromino
         self.tetromino = self.validate_move(direction).or(self.tetromino);
-
-        //If tetromino is out of bounds, calculate its offset and fix it.
-        //let offset = Tetris::calculate_offset(&self.grid, &self.tetromino.as_ref().unwrap());
-        //tetromino.position.x += offset.x;
-        //tetromino.position.y += offset.y;
 
         //Check if tetromino reached the lowest point of our grid. If yes, lock it up and
         //generate a new one.
@@ -263,19 +260,6 @@ impl Tetris {
         let mut tetromino = graphics::MeshBuilder::new();
         let tet = self.tetromino_next.as_ref().unwrap();
 
-        /*
-        tetromino.rectangle(
-            DrawMode::stroke(2.0),
-            Rect::new(
-                0.0,
-                0.0,
-                BLOCK_WIDTH as f32 * 5.0,
-                BLOCK_HEIGHT as f32 * 5.0,
-            ),
-            tet.blocks()[0].color,
-        );
-        */
-
         tet.blocks().iter().for_each(|x| {
             tetromino.rectangle(
                 DrawMode::fill(),
@@ -306,6 +290,32 @@ impl Tetris {
         ));
         let mesh = tetromino.build(ctx).unwrap();
         graphics::draw(ctx, &mesh, d_param)
+    }
+
+    fn update_score(&mut self, clears: &LineClears) {
+        //Update the score
+        match clears {
+            LineClears::NoClear => {}
+            LineClears::Single => {
+                self.score += 1000;
+            }
+            LineClears::Double => {
+                self.score += 4000;
+            }
+            LineClears::Tripple => {
+                self.score += 6000;
+            }
+            LineClears::Rustris => {
+                self.score += 12000;
+            }
+        }
+    }
+
+    fn draw_score(&mut self, ctx: &mut Context) -> GameResult<()> {
+        let info_text = graphics::Text::new(format!("Score: {}", self.score));
+        info_text.draw(ctx, DrawParam::new().dest(Point2::new(30.0, 30.0)))?;
+
+        Ok(())
     }
 }
 
@@ -341,7 +351,9 @@ impl EventHandler for Tetris {
         }
 
         if self.lock_timer != Duration::new(0, 0) {}
-        self.grid.clear_lines();
+        //Clear filled lines and get the number of lines cleared back.
+        let cleared = self.grid.clear_lines();
+        self.update_score(&cleared);
 
         GameResult::Ok(())
     }
@@ -349,12 +361,10 @@ impl EventHandler for Tetris {
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         graphics::clear(ctx, graphics::BLACK);
 
-        let info_text = graphics::Text::new(format!("{:?}", timer::fps(ctx)));
-        info_text.draw(ctx, DrawParam::new().dest(Point2::new(30.0, 30.0)))?;
-
         if !self.game_running {
             self.draw_intro(ctx).unwrap();
         } else {
+            self.draw_score(ctx).unwrap();
             self.draw_grid(ctx).unwrap();
             self.draw_tetromino(ctx)?;
             self.draw_next_tetromino(ctx);

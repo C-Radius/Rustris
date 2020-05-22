@@ -370,13 +370,15 @@ impl Grid {
         true
     }
 
-    pub fn clear_lines(&mut self) -> bool {
+    pub fn clear_lines(&mut self) -> LineClears {
         let lines = self.find_line_clears();
 
         if !lines.is_empty() {
             lines.iter().for_each(|line| {
                 self.clear_line(*line);
             });
+        } else {
+            LineClears::NoClear;
         }
 
         for (x, row) in self.blocks.iter_mut().enumerate() {
@@ -385,7 +387,7 @@ impl Grid {
                 col.position.y = y as f32;
             }
         }
-        true
+        LineClears::get_clear_type(lines.len() as u32)
     }
 
     pub fn check_occupied(&self, x: u32, y: u32) -> bool {
@@ -404,3 +406,23 @@ impl Grid {
     }
 }
 
+#[derive(Debug)]
+pub enum LineClears {
+    NoClear = 0,
+    Single = 1,
+    Double = 2,
+    Tripple = 3,
+    Rustris = 4,
+}
+
+impl LineClears {
+    fn get_clear_type(clear: u32) -> LineClears {
+        match clear {
+            1 => LineClears::Single,
+            2 => LineClears::Double,
+            3 => LineClears::Tripple,
+            4 => LineClears::Rustris,
+            _ => LineClears::NoClear,
+        }
+    }
+}

@@ -1,5 +1,5 @@
 [package]
-name = "tetris"
+name = "rustris"
 version = "0.1.0"
 authors = ["C-Radius <deus.deceit@gmail.com>"]
 edition = "2018"
