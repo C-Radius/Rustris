@@ -11,11 +11,11 @@ use crate::tetris::Tetris;
 fn main() {
     let (mut ctx, mut event_loop) = ContextBuilder::new("Tetris", "Chris Kritsotalakis")
         .window_mode(WindowMode {
-            width: 1920.0f32,
-            height: 1080.0f32,
-            maximized: true,
-            fullscreen_type: FullscreenType::True,
-            borderless: true,
+            width: 800.0f32,
+            height: 600.0f32,
+            maximized: false,
+            fullscreen_type: FullscreenType::Windowed,
+            borderless: false,
             min_width: 0.0,
             max_width: 0.0,
             min_height: 0.0,

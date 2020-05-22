@@ -18,7 +18,7 @@ const GRID_HEIGHT: u32 = 22;
 
 const UPDATES_PER_SECOND: f32 = 4.0;
 const MILLIS_PER_UPDATE: u64 = (1.0 / UPDATES_PER_SECOND * 1000.0) as u64;
-const MILLIS_PER_LOCK: u64 = 500;
+const MILLS_PER_LOCK: u64 = 500;
 
 //Struct to keep track of where our tetromino is going.
 pub enum MoveDirection {
@@ -36,6 +36,8 @@ pub struct Tetris {
     game_running: bool,
     move_tetromino_down: std::time::Duration,
     last_update: Instant,
+    to_lock: bool,
+    lock_timer: Duration,
 }
 
 impl Tetris {
@@ -48,6 +50,8 @@ impl Tetris {
             game_running: false,
             move_tetromino_down: Duration::new(0, 0),
             last_update: Instant::now(),
+            to_lock: false,
+            lock_timer: Duration::new(0, 0),
         }
     }
 
@@ -79,14 +83,16 @@ impl Tetris {
                     offset.x = grid_width - abs_tetromino_x;
                 }
             } else if abs_tetromino_x < 0.0 {
-                offset.x = abs_tetromino_x.abs();
+                if abs_tetromino_x.abs() > offset.x {
+                    offset.x = abs_tetromino_x.abs();
+                }
             }
         });
 
         offset
     }
 
-    //Validates if the incoming move is a proper one. if it is it updates our tetromino
+    //Validates if the incoming move is a proper one. If it is it updates our tetromino
     //with its new values.
     pub fn validate_move(&self, direction: &MoveDirection) -> Option<Tetromino> {
         let mut next_pos_empty = true;
@@ -104,6 +110,9 @@ impl Tetris {
             }
             MoveDirection::Up => {
                 tetromino.rotation.rotate_cw();
+                let offset = Tetris::calculate_offset(&self.grid, &tetromino);
+                tetromino.position.x += offset.x;
+                tetromino.position.y += offset.y;
             }
         };
 
@@ -112,11 +121,6 @@ impl Tetris {
                 (tetromino.position.x + block.position.x) as u32,
                 (tetromino.position.y + block.position.y) as u32,
             ) {
-                println!(
-                    "{} {}",
-                    tetromino.position.x + block.position.x,
-                    tetromino.position.y + block.position.y
-                );
                 next_pos_empty = false;
             }
         });
@@ -140,12 +144,10 @@ impl Tetris {
 
         //Check if tetromino reached the lowest point of our grid. If yes, lock it up and
         //generate a new one.
-        if self.validate_move(&MoveDirection::Down).is_none() {
-            self.lock_tetromino();
-            self.generate_tetromino();
+        if self.validate_move(&MoveDirection::Down).is_none() && self.to_lock == false {
+            self.to_lock = true;
         }
 
-        self.move_tetromino_down = Duration::new(0, 0);
         Ok(())
     }
 
@@ -173,23 +175,51 @@ impl Tetris {
         let mut grid = graphics::MeshBuilder::new();
         self.grid.blocks.iter().for_each(|x| {
             x.iter().for_each(|y| {
-                grid.rectangle(
-                    match y.state {
-                        BlockState::Filled => DrawMode::fill(),
-                        BlockState::Empty => DrawMode::Stroke(StrokeOptions::default()),
-                    },
-                    Rect::new(
-                        y.position.x * BLOCK_WIDTH,
-                        y.position.y * BLOCK_HEIGHT,
-                        BLOCK_WIDTH,
-                        BLOCK_HEIGHT,
-                    ),
-                    y.color,
-                );
+                match y.state {
+                    BlockState::Filled => {
+                        grid.rectangle(
+                            DrawMode::fill(),
+                            Rect::new(
+                                y.position.x * BLOCK_WIDTH,
+                                y.position.y * BLOCK_HEIGHT,
+                                BLOCK_WIDTH,
+                                BLOCK_HEIGHT,
+                            ),
+                            y.color,
+                        );
+                        //Draw outline
+                        grid.rectangle(
+                            DrawMode::stroke(2.0),
+                            Rect::new(
+                                y.position.x * BLOCK_WIDTH,
+                                y.position.y * BLOCK_HEIGHT,
+                                BLOCK_WIDTH,
+                                BLOCK_HEIGHT,
+                            ),
+                            Color::new(0.5, 0.5, 0.5, 1.0),
+                        );
+                    }
+                    BlockState::Empty => {}
+                };
             })
         });
 
-        let d_param = DrawParam::default();
+        grid.rectangle(
+            DrawMode::stroke(2.0),
+            Rect::new(
+                0.0,
+                0.0,
+                GRID_WIDTH as f32 * BLOCK_WIDTH,
+                GRID_HEIGHT as f32 * BLOCK_HEIGHT,
+            ),
+            Color::new(0.5, 0.5, 0.5, 1.0),
+        );
+
+        let d_param = DrawParam::default().dest(Point2::new(
+            (graphics::size(&ctx).0 / 2.0) - (BLOCK_WIDTH * GRID_WIDTH as f32) as f32 / 2.0,
+            20.0,
+        ));
+
         let mesh = grid.build(ctx).unwrap();
         graphics::draw(ctx, &mesh, d_param)
     }
@@ -209,9 +239,71 @@ impl Tetris {
                 ),
                 x.color,
             );
+            tetromino.rectangle(
+                DrawMode::stroke(2.0),
+                Rect::new(
+                    (tet.position.x + x.position.x) * BLOCK_WIDTH,
+                    (tet.position.y + x.position.y) * BLOCK_HEIGHT,
+                    BLOCK_WIDTH,
+                    BLOCK_HEIGHT,
+                ),
+                Color::new(0.5, 0.5, 0.5, 1.0),
+            );
         });
 
-        let d_param = DrawParam::default();
+        let d_param = DrawParam::default().dest(Point2::new(
+            (graphics::size(&ctx).0 / 2.0) - (BLOCK_WIDTH * GRID_WIDTH as f32) as f32 / 2.0,
+            20.0,
+        ));
+        let mesh = tetromino.build(ctx).unwrap();
+        graphics::draw(ctx, &mesh, d_param)
+    }
+
+    pub fn draw_next_tetromino(&self, ctx: &mut Context) -> GameResult<()> {
+        let mut tetromino = graphics::MeshBuilder::new();
+        let tet = self.tetromino_next.as_ref().unwrap();
+
+        /*
+        tetromino.rectangle(
+            DrawMode::stroke(2.0),
+            Rect::new(
+                0.0,
+                0.0,
+                BLOCK_WIDTH as f32 * 5.0,
+                BLOCK_HEIGHT as f32 * 5.0,
+            ),
+            tet.blocks()[0].color,
+        );
+        */
+
+        tet.blocks().iter().for_each(|x| {
+            tetromino.rectangle(
+                DrawMode::fill(),
+                Rect::new(
+                    (2.0 + x.position.x) * BLOCK_WIDTH,
+                    (2.0 + x.position.y) * BLOCK_HEIGHT,
+                    BLOCK_WIDTH,
+                    BLOCK_HEIGHT,
+                ),
+                x.color,
+            );
+            tetromino.rectangle(
+                DrawMode::stroke(2.0),
+                Rect::new(
+                    (2.0 + x.position.x) * BLOCK_WIDTH,
+                    (2.0 + x.position.y) * BLOCK_HEIGHT,
+                    BLOCK_WIDTH,
+                    BLOCK_HEIGHT,
+                ),
+                Color::new(0.5, 0.5, 0.5, 1.0),
+            );
+        });
+
+        let d_param = DrawParam::default().dest(Point2::new(
+            ((graphics::size(&ctx).0 / 2.0) + (BLOCK_WIDTH * GRID_WIDTH as f32) as f32 / 2.0)
+                + 20.0,
+            20.0,
+        ));
         let mesh = tetromino.build(ctx).unwrap();
         graphics::draw(ctx, &mesh, d_param)
     }
@@ -228,16 +320,29 @@ impl EventHandler for Tetris {
                 }
             } else {
                 self.move_tetromino_down = self.move_tetromino_down.add(self.last_update.elapsed());
+                if self.to_lock == true {
+                    self.lock_timer = self.lock_timer.add(self.last_update.elapsed());
+                }
 
-                if self.move_tetromino_down.as_millis() >= MOVE_TETROMINO_EVERY {
-                    self.move_tetromino(&MoveDirection::Down)?;
-                    self.move_tetromino_down = Duration::new(0, 0);
+                if self.lock_timer >= Duration::from_millis(MILLS_PER_LOCK) && self.to_lock == true
+                {
+                    self.to_lock = false;
+                    self.lock_timer = Duration::new(0, 0);
+                    self.lock_tetromino();
+                    self.generate_tetromino();
+                } else {
+                    if self.move_tetromino_down.as_millis() >= MOVE_TETROMINO_EVERY {
+                        self.move_tetromino(&MoveDirection::Down)?;
+                        self.move_tetromino_down = Duration::new(0, 0);
+                    }
                 }
             }
             self.last_update = Instant::now();
         }
 
+        if self.lock_timer != Duration::new(0, 0) {}
         self.grid.clear_lines();
+
         GameResult::Ok(())
     }
 
@@ -252,6 +357,7 @@ impl EventHandler for Tetris {
         } else {
             self.draw_grid(ctx).unwrap();
             self.draw_tetromino(ctx)?;
+            self.draw_next_tetromino(ctx);
         }
         graphics::present(ctx)?;
         timer::yield_now();
@@ -266,6 +372,9 @@ impl EventHandler for Tetris {
         repeat: bool,
     ) {
         if self.game_running {
+            //Todo
+            //Make this more ... Professional?
+            self.lock_timer = Duration::from_millis(0);
             match keycode {
                 KeyCode::Up => {
                     if !repeat {

@@ -18,8 +18,8 @@ const COLOR_J: Color = Color::new(31.0 / 255.0, 255.0 / 255.0, 255.0 / 255.0, 25
 //L
 const COLOR_L: Color = Color::new(208.0 / 255.0, 54.0 / 255.0, 54.0 / 255.0, 255.0 / 255.0);
 
-pub const BLOCK_WIDTH: f32 = 35.0;
-pub const BLOCK_HEIGHT: f32 = 35.0;
+pub const BLOCK_WIDTH: f32 = 25.0;
+pub const BLOCK_HEIGHT: f32 = 25.0;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum BlockState {
@@ -90,7 +90,7 @@ impl Distribution<TetrominoType> for Standard {
     where
         R: rand::Rng + ?std::marker::Sized,
     {
-        match rng.gen_range(0, 6) {
+        match rng.gen_range(0, 7) {
             0 => I,
             1 => O,
             2 => T,
@@ -166,10 +166,10 @@ impl Tetromino {
                     Block::new(Point2::new(1.0, 1.0), COLOR_O, BlockState::Filled),
                 ],
                 Rotation::_270 => vec![
-                    Block::new(Point2::new(-2.0, 0.0), COLOR_O, BlockState::Filled),
-                    Block::new(Point2::new(-1.0, 0.0), COLOR_O, BlockState::Filled),
                     Block::new(Point2::new(0.0, 0.0), COLOR_O, BlockState::Filled),
                     Block::new(Point2::new(1.0, 0.0), COLOR_O, BlockState::Filled),
+                    Block::new(Point2::new(0.0, 1.0), COLOR_O, BlockState::Filled),
+                    Block::new(Point2::new(1.0, 1.0), COLOR_O, BlockState::Filled),
                 ],
             },
             TetrominoType::T => match self.rotation {
