@@ -3,10 +3,10 @@ use ggez::conf::WindowMode;
 use ggez::event;
 use ggez::ContextBuilder;
 
-mod tetris;
+mod rustris;
 mod types;
 
-use crate::tetris::Tetris;
+use rustris::Rustris;
 
 fn main() {
     let (mut ctx, mut event_loop) = ContextBuilder::new("Tetris", "Chris Kritsotalakis")
@@ -25,9 +25,9 @@ fn main() {
         .build()
         .unwrap();
 
-    let mut tetris = Tetris::new(&mut ctx);
+    let mut rustris = Rustris::new(&mut ctx);
 
-    match event::run(&mut ctx, &mut event_loop, &mut tetris) {
+    match event::run(&mut ctx, &mut event_loop, &mut rustris) {
         Ok(_) => println!("Exited cleanly."),
         Err(e) => println!("Error occured: {}", e),
     }

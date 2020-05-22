@@ -378,7 +378,7 @@ impl Grid {
                 self.clear_line(*line);
             });
         } else {
-            LineClears::NoClear;
+            return LineClears::NoClear;
         }
 
         for (x, row) in self.blocks.iter_mut().enumerate() {

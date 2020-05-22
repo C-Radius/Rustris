@@ -29,7 +29,7 @@ pub enum MoveDirection {
 }
 
 //Struct to hold the entire game state.
-pub struct Tetris {
+pub struct Rustris {
     grid: Grid,
     tetromino: Option<Tetromino>,
     tetromino_next: Option<Tetromino>,
@@ -41,10 +41,10 @@ pub struct Tetris {
     score: u64,
 }
 
-impl Tetris {
-    pub fn new(_ctx: &mut Context) -> Tetris {
+impl Rustris {
+    pub fn new(_ctx: &mut Context) -> Rustris {
         //Create new game state.
-        Tetris {
+        Rustris {
             grid: Grid::new(GRID_WIDTH, GRID_HEIGHT, Color::new(0.5, 0.5, 0.5, 1.0)),
             tetromino: None,
             tetromino_next: None,
@@ -96,7 +96,7 @@ impl Tetris {
 
     //Validates if the incoming move is a proper one. If it is it updates our tetromino
     //with its new values.
-    pub fn validate_move(&self, direction: &MoveDirection) -> Option<Tetromino> {
+    pub fn validate_move(&mut self, direction: &MoveDirection) -> Option<Tetromino> {
         let mut next_pos_empty = true;
         let mut tetromino = self.tetromino.unwrap().clone();
 
@@ -112,7 +112,7 @@ impl Tetris {
             }
             MoveDirection::Up => {
                 tetromino.rotation.rotate_cw();
-                let offset = Tetris::calculate_offset(&self.grid, &tetromino);
+                let offset = Rustris::calculate_offset(&self.grid, &tetromino);
                 tetromino.position.x += offset.x;
                 tetromino.position.y += offset.y;
             }
@@ -126,6 +126,11 @@ impl Tetris {
                 next_pos_empty = false;
             }
         });
+
+        if next_pos_empty && self.to_lock {
+            self.to_lock = false;
+            self.lock_timer = Duration::from_millis(0);
+        }
 
         match next_pos_empty {
             true => Some(tetromino),
@@ -319,7 +324,7 @@ impl Tetris {
     }
 }
 
-impl EventHandler for Tetris {
+impl EventHandler for Rustris {
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
         if self.last_update.elapsed() >= Duration::from_millis(MILLIS_PER_UPDATE) {
             if !self.game_running {
@@ -367,7 +372,7 @@ impl EventHandler for Tetris {
             self.draw_score(ctx).unwrap();
             self.draw_grid(ctx).unwrap();
             self.draw_tetromino(ctx)?;
-            self.draw_next_tetromino(ctx);
+            self.draw_next_tetromino(ctx)?;
         }
         graphics::present(ctx)?;
         timer::yield_now();
