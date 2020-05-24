@@ -11,14 +11,11 @@ use std::time::{Duration, Instant};
 use crate::types::*;
 use ggez::nalgebra::geometry::Point2;
 
-const MOVE_TETROMINO_EVERY: u128 = 500;
-
 const GRID_WIDTH: u32 = 10;
 const GRID_HEIGHT: u32 = 22;
 
-const UPDATES_PER_SECOND: f32 = 4.0;
+const UPDATES_PER_SECOND: f32 = 8.0;
 const MILLIS_PER_UPDATE: u64 = (1.0 / UPDATES_PER_SECOND * 1000.0) as u64;
-const MILLS_PER_LOCK: u64 = 500;
 
 //Struct to keep track of where our tetromino is going.
 pub enum MoveDirection {
@@ -36,9 +33,14 @@ pub struct Rustris {
     game_running: bool,
     move_tetromino_down: std::time::Duration,
     last_update: Instant,
+    move_tetromino_every: u32,
     to_lock: bool,
     lock_timer: Duration,
     score: u64,
+    single: u32,
+    double: u32,
+    tripple: u32,
+    rustris: u32,
 }
 
 impl Rustris {
@@ -51,9 +53,14 @@ impl Rustris {
             game_running: false,
             move_tetromino_down: Duration::new(0, 0),
             last_update: Instant::now(),
+            move_tetromino_every: 500,
             to_lock: false,
             lock_timer: Duration::new(0, 0),
             score: 0,
+            single: 0,
+            double: 0,
+            tripple: 0,
+            rustris: 0,
         }
     }
 
@@ -66,14 +73,14 @@ impl Rustris {
     //Generates a random tetromino.
     pub fn generate_tetromino(&mut self) {
         if self.tetromino_next.is_none() {
-            self.tetromino_next = Some(Tetromino::random(Point2::new(5.0, 0.0), Rotation::_0));
+            self.tetromino_next = Some(Tetromino::random(Point2::new(5.0, 1.0), Rotation::_0));
         }
         self.tetromino = self.tetromino_next.take();
-        self.tetromino_next = Some(Tetromino::random(Point2::new(5.0, 0.0), Rotation::_0));
+        self.tetromino_next = Some(Tetromino::random(Point2::new(5.0, 1.0), Rotation::_0));
     }
 
-    //Calculates the offset that should be applied on the tetromino in order for its
-    //position to be a valid one in the grid
+    //Calculates the offset that should be applied on the tetromino in order for its position to be
+    //a valid one in the grid
     pub fn calculate_offset(grid: &Grid, tetromino: &Tetromino) -> Point2<f32> {
         let mut offset = Point2::new(0.0f32, 0.0f32);
         let grid_width = grid.width as f32 - 1.0;
@@ -94,8 +101,21 @@ impl Rustris {
         offset
     }
 
-    //Validates if the incoming move is a proper one. If it is it updates our tetromino
-    //with its new values.
+    pub fn get_level(&self) -> u32 {
+        let sum_lines = self.single + (self.double * 2) + (self.tripple * 3) + (self.rustris * 4);
+        if sum_lines != 0 {
+            (sum_lines as f32 / 10.0).ceil() as u32
+        } else {
+            1
+        }
+    }
+
+    pub fn get_move_delay(&self) -> u32 {
+        (self.move_tetromino_every as f32 / (self.get_level() as f32 / 2.0)) as u32
+    }
+
+    //Validates if the incoming move is a proper one. If it is it updates our tetromino with its
+    //new values.
     pub fn validate_move(&mut self, direction: &MoveDirection) -> Option<Tetromino> {
         let mut next_pos_empty = true;
         let mut tetromino = self.tetromino.unwrap().clone();
@@ -140,12 +160,12 @@ impl Rustris {
 
     //Moves our tetromino to the its new position.
     pub fn move_tetromino(&mut self, direction: &MoveDirection) -> GameResult<()> {
-        //Check if incoming move is valid. If yes, swap current tetromino with new one.
-        //If not, keep current tetromino
+        //Check if incoming move is valid. If yes, swap current tetromino with new one. If not,
+        //keep current tetromino
         self.tetromino = self.validate_move(direction).or(self.tetromino);
 
-        //Check if tetromino reached the lowest point of our grid. If yes, lock it up and
-        //generate a new one.
+        //Check if tetromino reached the lowest point of our grid. If yes, lock it up and generate
+        //a new one.
         if self.validate_move(&MoveDirection::Down).is_none() && self.to_lock == false {
             self.to_lock = true;
         }
@@ -302,22 +322,29 @@ impl Rustris {
         match clears {
             LineClears::NoClear => {}
             LineClears::Single => {
+                self.single += 1;
                 self.score += 1000;
             }
             LineClears::Double => {
+                self.double += 1;
                 self.score += 4000;
             }
             LineClears::Tripple => {
+                self.tripple += 1;
                 self.score += 6000;
             }
             LineClears::Rustris => {
+                self.rustris += 1;
                 self.score += 12000;
             }
         }
     }
 
     fn draw_score(&mut self, ctx: &mut Context) -> GameResult<()> {
-        let info_text = graphics::Text::new(format!("Score: {}", self.score));
+        let info_text = graphics::Text::new(format!(
+            "Score: {}\n\nLevel: {}\n\nLine Clears: \n  Single: {}\n  Double: {}\n  Tripple: {}\n  Rustris: {}",
+            self.score, self.get_level(), self.single, self.double, self.tripple, self.rustris
+        ));
         info_text.draw(ctx, DrawParam::new().dest(Point2::new(30.0, 30.0)))?;
 
         Ok(())
@@ -339,16 +366,17 @@ impl EventHandler for Rustris {
                     self.lock_timer = self.lock_timer.add(self.last_update.elapsed());
                 }
 
-                if self.lock_timer >= Duration::from_millis(MILLS_PER_LOCK) && self.to_lock == true
+                if self.lock_timer >= Duration::from_millis(self.get_move_delay() as u64)
+                    && self.to_lock == true
                 {
                     self.to_lock = false;
                     self.lock_timer = Duration::new(0, 0);
                     self.lock_tetromino();
                     self.generate_tetromino();
                 } else {
-                    if self.move_tetromino_down.as_millis() >= MOVE_TETROMINO_EVERY {
+                    if self.move_tetromino_down.as_millis() >= self.get_move_delay() as u128 {
                         self.move_tetromino(&MoveDirection::Down)?;
-                        self.move_tetromino_down = Duration::new(0, 0);
+                        self.move_tetromino_down = Duration::from_millis(0);
                     }
                 }
             }
@@ -387,8 +415,7 @@ impl EventHandler for Rustris {
         repeat: bool,
     ) {
         if self.game_running {
-            //Todo
-            //Make this more ... Professional?
+            //Todo Make this more ... Professional?
             self.lock_timer = Duration::from_millis(0);
             match keycode {
                 KeyCode::Up => {
